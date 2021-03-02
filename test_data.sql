@@ -22,3 +22,14 @@ CREATE TABLE invoices (
     paid_date date,
     CONSTRAINT invoices_amt_check CHECK ((amt > (0)::double precision))
 );
+
+CREATE TABLE company_industries (
+  comp_code TEXT NOT NULL REFERENCES companies,
+  ind_code TEXT NOT NULL REFERENCES industries,
+  PRIMARY KEY (comp_code, ind_code)
+)
+
+CREATE TABLE industries (
+  ind_code TEXT PRIMARY KEY,
+  industry TEXT UNIQUE
+)

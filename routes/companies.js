@@ -11,7 +11,11 @@ const slugify = require("slugify");
 router.get("/", async function (req, res, next) {
   try {
     const result = await db.query(
-      `SELECT code, name, description FROM companies`
+      `SELECT c.code, c.name, c.description, ind.industry FROM companies AS c
+      LEFT JOIN company_industries AS ci
+      ON c.code = ci.comp_code
+      LEFT JOIN industries AS ind
+      ON ci.ind_code = ind.ind_code`
     );
 
     return res.json({ companies: result.rows });
