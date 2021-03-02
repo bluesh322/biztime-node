@@ -15,7 +15,7 @@ router.get("/", async function (req, res, next) {
       ORDER BY id`
     );
 
-    return res.json({ invoices: result.rows });
+    return res.status(200).json({invoices: result.rows});
   } catch (err) {
     return next(err);
   }
@@ -41,11 +41,12 @@ router.get("/:id", async function (req, res, next) {
 
     const data = result.rows[0];
     const invoice = {
-      id : data.id,
+      id: data.id,
       amt: data.amt,
       paid: data.paid,
       add_date: data.add_date,
       paid_date: data.paid_date,
+      comp_code: data.comp_code,
       company: {
         code: data.comp_code,
         name: data.name,
@@ -54,7 +55,7 @@ router.get("/:id", async function (req, res, next) {
 
     };
 
-    return res.json({ "invoice": invoice });
+    return res.status(200).json({invoice: invoice});
   } catch (err) {
     return next(err);
   }
@@ -71,7 +72,7 @@ router.post("/", async (req, res, next) => {
       RETURNING id, comp_code, amt, paid, add_date, paid_date`,
       [comp_code, amt]
       );
-    return res.status(201).json({"invoice": result.rows[0]})
+    return res.status(201).json({invoice: result.rows[0]})
   } catch (err) {
     return next(err);
   }
@@ -82,10 +83,11 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const {id} = req.params
-    const {amt } = req.body;
+    const {amt, paid} = req.body;
+    let paidDate = null;
 
     const checkInvoice = await db.query(
-      `SELECT id
+      `SELECT paid
       FROM invoices
       WHERE id = $1`,
       [id]
@@ -95,14 +97,27 @@ router.put("/:id", async (req, res, next) => {
       throw new ExpressError(`No such invoice: ${id}`, 404);
     }
 
+    if (!req.body.amt || req.body.paid == null) {
+      throw new ExpressError(`Insufficient information in the body`, 500);
+    }
+
+    const checkPaidDate = checkInvoice.rows[0].paid_date;
+
+    if(!checkPaidDate && paid) {
+      paidDate = new Date();
+    } else if (!paid) {
+      paidDate = null;
+    } else {
+      paidDate = checkPaidDate;
+    }
     const result = await db.query(
       `UPDATE invoices 
-      SET amt=$2
+      SET amt=$2, paid=$3, paid_date=$4
       WHERE id = $1
       RETURNING id, comp_code, amt, paid, add_date, paid_date`,
-      [id, amt]
+      [id, amt, paid, paidDate]
       );
-    return res.status(201).json({"invoice": result.rows[0]})
+    return res.status(201).json({invoice: result.rows[0]})
   } catch (err) {
     return next(err);
   }
@@ -126,7 +141,7 @@ router.delete("/:id", async function (req, res, next) {
       throw new ExpressError(`No such invoice: ${id}`, 404);
     }
 
-    return res.json({status: "Deleted"});
+    return res.json({status: "deleted"});
   }
   catch (err) {
     return next(err);
